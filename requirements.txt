@@ -1,0 +1,16 @@
+pandas>=2.0
+geopandas
+numpy
+requests
+xgboost
+lightgbm
+scikit-learn
+shap
+pulp
+matplotlib
+plotly
+pyarrow
+census
+tqdm
+scipy
+python-dotenv
