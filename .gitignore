@@ -6,3 +6,8 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 venv/
+
+# web/data/ is intentionally tracked — bundled for deployment
+!web/
+!web/data/
+!web/data/**

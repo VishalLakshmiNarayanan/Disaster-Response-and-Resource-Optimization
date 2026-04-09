@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}DisasterAI{% endblock %}</title>
+
+  <!-- Fonts: Syne (display) + DM Sans (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── NAV ────────────────────────────────────────────────────────────────── -->
+<nav class="nav" id="nav">
+  <div class="nav__inner">
+    <a href="/" class="nav__logo">
+      <span class="nav__logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      DisasterAI
+    </a>
+
+    <div class="nav__links">
+      <a href="/" class="nav__link {% if request.endpoint == 'index' %}nav__link--active{% endif %}">Overview</a>
+      <a href="/simulator" class="nav__link {% if request.endpoint == 'simulator' %}nav__link--active{% endif %}">Simulator</a>
+    </div>
+
+    <a href="/simulator" class="btn btn--sm btn--primary">Launch Simulator</a>
+  </div>
+</nav>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────────── -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer__inner">
+    <p class="footer__copy">
+      Equity-Based Predictive Disaster Response &amp; Resource Optimization &mdash;
+      Capstone Project &middot; Built on HURDAT2, FEMA OpenFEMA, NCEI, CDC SVI &amp; ACS data.
+    </p>
+    <p class="footer__copy footer__copy--muted">
+      Two-Stage XGBoost Hurdle Model &nbsp;&bull;&nbsp;
+      Equity-Constrained Linear Program &nbsp;&bull;&nbsp;
+      46 Hurricane Events 2018&ndash;2023
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Shrink nav on scroll
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('nav--scrolled', window.scrollY > 40);
+  }, { passive: true });
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

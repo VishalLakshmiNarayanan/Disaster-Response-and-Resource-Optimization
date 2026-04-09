@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}DisasterAI — Simulator{% endblock %}
+
+{% block content %}
+<div class="sim-layout">
+
+  <!-- ── SIDEBAR ────────────────────────────────────────────── -->
+  <aside class="sim-sidebar">
+    <div class="sim-sidebar__head">
+      <div class="sim-sidebar__title">Resource Simulator</div>
+      <div class="sim-sidebar__sub">Equity-constrained LP optimizer</div>
+    </div>
+
+    <div class="sim-sidebar__body">
+
+      <!-- Mode toggle: Historical Storm vs Custom Scenario -->
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="storm" id="tabStorm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" fill="currentColor" opacity=".3"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Historical Storm
+        </button>
+        <button class="mode-tab" data-mode="custom" id="tabCustom">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Custom Scenario
+        </button>
+      </div>
+
+      <!-- ── STORM MODE ───────────────────────────────────── -->
+      <div id="stormModePanel">
+
+        <!-- Disaster Type -->
+        <div class="form-group">
+          <div class="form-label">Disaster Type</div>
+          <div class="disaster-grid" id="disasterGrid">
+            <div class="disaster-card active" data-type="hurricane">
+              <div class="disaster-card__icon">🌀</div>
+              <div class="disaster-card__name">Hurricane</div>
+            </div>
+            <div class="disaster-card" data-type="flood">
+              <div class="disaster-card__icon">🌊</div>
+              <div class="disaster-card__name">Flood</div>
+            </div>
+            <div class="disaster-card" data-type="tornado">
+              <div class="disaster-card__icon">🌪</div>
+              <div class="disaster-card__name">Tornado</div>
+            </div>
+            <div class="disaster-card" data-type="wildfire">
+              <div class="disaster-card__icon">🔥</div>
+              <div class="disaster-card__name">Wildfire</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Select Storm Event</div>
+          <select class="storm-select" id="stormSelect">
+            <option value="">— Choose a storm —</option>
+            {% for s in storms %}
+            <option value="{{ s.storm_id }}">
+              {{ s.storm_name }} ({{ s.storm_year }}) — {{ s.n_counties }} counties
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+      </div><!-- /stormModePanel -->
+
+      <!-- ── CUSTOM MODE ──────────────────────────────────── -->
+      <div id="customModePanel" style="display:none;">
+
+        <div class="custom-instructions">
+          <div class="custom-instructions__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M3 12h18M12 3l9 9-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="custom-instructions__title">Click counties on the map</div>
+            <div class="custom-instructions__body">Build any disaster scenario by selecting affected counties. The LP optimizer runs on your selection.</div>
+          </div>
+        </div>
+
+        <!-- Disaster type for custom -->
+        <div class="form-group">
+          <div class="form-label">Disaster Type</div>
+          <div class="disaster-grid" id="disasterGridCustom">
+            <div class="disaster-card active" data-type="hurricane">
+              <div class="disaster-card__icon">🌀</div>
+              <div class="disaster-card__name">Hurricane</div>
+            </div>
+            <div class="disaster-card" data-type="flood">
+              <div class="disaster-card__icon">🌊</div>
+              <div class="disaster-card__name">Flood</div>
+            </div>
+            <div class="disaster-card" data-type="tornado">
+              <div class="disaster-card__icon">🌪</div>
+              <div class="disaster-card__name">Tornado</div>
+            </div>
+            <div class="disaster-card" data-type="wildfire">
+              <div class="disaster-card__icon">🔥</div>
+              <div class="disaster-card__name">Wildfire</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selection counter -->
+        <div class="selection-status" id="selectionStatus">
+          <div class="selection-count">
+            <span class="selection-count__num" id="selectionCount">0</span>
+            <span class="selection-count__label">counties selected</span>
+          </div>
+          <button class="clear-btn" id="clearSelectionBtn" onclick="MAP.clearSelection()">
+            Clear
+          </button>
+        </div>
+
+        <div id="selectionHint" style="font-size:12px;color:var(--text-3);line-height:1.6;margin-top:4px;">
+          Click individual counties on the map. Click again to deselect.
+        </div>
+
+      </div><!-- /customModePanel -->
+
+      <div class="divider"></div>
+
+      <!-- Shared sliders -->
+      <div class="form-group">
+        <div class="form-label">
+          Equity Reserve
+          <span class="form-label-val" id="equityVal">40%</span>
+        </div>
+        <input type="range" id="equitySlider" min="0" max="80" step="5" value="40">
+        <div class="slider-marks"><span>0%</span><span>40%</span><span>80%</span></div>
+        <div class="slider-hint">% of supply reserved for high-SVI counties (≥ threshold)</div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">
+          Supply Availability
+          <span class="form-label-val" id="supplyVal">80%</span>
+        </div>
+        <input type="range" id="supplySlider" min="40" max="120" step="5" value="80">
+        <div class="slider-marks"><span>40%</span><span>80%</span><span>120%</span></div>
+        <div class="slider-hint">% of total predicted demand available as supply</div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">
+          SVI Threshold
+          <span class="form-label-val" id="sviVal">0.75</span>
+        </div>
+        <input type="range" id="sviSlider" min="0.5" max="0.9" step="0.05" value="0.75">
+        <div class="slider-marks"><span>0.50</span><span>0.75</span><span>0.90</span></div>
+        <div class="slider-hint">Minimum SVI score to classify as high-vulnerability</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <button class="run-btn" id="runBtn" disabled>
+        <div class="run-btn__spinner"></div>
+        <span class="run-btn__label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Optimizer
+        </span>
+      </button>
+
+      <div id="stormInfo" style="display:none;margin-top:8px;">
+        <div class="info-note">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span id="stormInfoText"></span>
+        </div>
+      </div>
+
+    </div><!-- /sidebar body -->
+  </aside>
+
+  <!-- ── MAP + RESULTS ──────────────────────────────────────── -->
+  <div class="sim-main">
+    <div class="map-container" id="mapContainer">
+      <svg id="mapSvg" class="map-svg"></svg>
+
+      <!-- Mode buttons -->
+      <div class="map-controls">
+        <button class="map-toggle active" data-mode="svi">SVI</button>
+        <button class="map-toggle" data-mode="demand">Demand</button>
+        <button class="map-toggle" data-mode="allocation">Allocation</button>
+        <button class="map-toggle" id="zoomReset" style="margin-left:8px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M3 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Reset
+        </button>
+      </div>
+
+      <!-- Tooltip -->
+      <div class="map-tooltip" id="mapTooltip">
+        <div class="map-tooltip__name" id="ttName"></div>
+        <div class="map-tooltip__row"><span class="map-tooltip__key">FIPS</span><span class="map-tooltip__val" id="ttFips"></span></div>
+        <div class="map-tooltip__row"><span class="map-tooltip__key">SVI Score</span><span class="map-tooltip__val" id="ttSvi"></span></div>
+        <div class="map-tooltip__row"><span class="map-tooltip__key">Pred. Demand</span><span class="map-tooltip__val" id="ttDemand"></span></div>
+        <div class="map-tooltip__row"><span class="map-tooltip__key">LP Alloc.</span><span class="map-tooltip__val" id="ttAlloc"></span></div>
+        <div class="map-tooltip__row" id="ttSelectedRow" style="margin-top:4px;">
+          <span class="map-tooltip__val" id="ttSelected" style="color:var(--blue);font-size:11px;"></span>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="map-legend">
+        <div class="map-legend__title" id="legendTitle">SVI Vulnerability</div>
+        <div class="legend-gradient" id="legendGradient"></div>
+        <div class="legend-labels">
+          <span id="legendLow">Low</span>
+          <span id="legendHigh">High</span>
+        </div>
+      </div>
+
+      <!-- Loading overlay -->
+      <div class="map-overlay" id="mapOverlay">
+        <div class="map-overlay__spinner"></div>
+        <div class="map-overlay__text" id="overlayText">Loading map data…</div>
+      </div>
+    </div><!-- /map-container -->
+
+    <!-- Results panel -->
+    <div class="results-panel" id="resultsPanel">
+
+      <div id="emptyState" class="empty-state">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+          <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44l-3.52-9A2.5 2.5 0 0 1 5.87 7h1.13L9.5 2z" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44l3.52-9A2.5 2.5 0 0 0 18.13 7h-1.13L14.5 2z" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <div class="empty-state__title">No results yet</div>
+        <div>Select a storm or build a custom scenario, then click <strong>Run Optimizer</strong></div>
+      </div>
+
+      <div id="resultsContent" style="display:none;">
+
+        <!-- top KPI strip -->
+        <div class="kpi-strip">
+          <div class="kpi-card">
+            <div class="kpi-card__label">Unmet Demand (LP)</div>
+            <div class="kpi-card__val" id="kpiUnmet">—</div>
+            <div class="kpi-card__delta" id="kpiUnmetDelta"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card__label">High-SVI Coverage</div>
+            <div class="kpi-card__val" id="kpiHiSvi">—</div>
+            <div class="kpi-card__delta" id="kpiHiSviDelta"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card__label">Equity Gap (LP–Pop)</div>
+            <div class="kpi-card__val" id="kpiEquity">—</div>
+            <div class="kpi-card__delta" id="kpiEquityDelta"></div>
+          </div>
+          <div class="kpi-card kpi-card--wide">
+            <div class="kpi-card__label">LP vs Pop-Proportional Coverage</div>
+            <div class="dual-bar-group">
+              <div class="dual-bar-row">
+                <span class="dual-bar-label">LP Overall</span>
+                <div class="dual-bar-track"><div class="dual-bar-fill dual-bar-fill--lp" id="cbarLpOverall"></div></div>
+                <span class="dual-bar-pct" id="cbarLpOverallPct">—</span>
+              </div>
+              <div class="dual-bar-row">
+                <span class="dual-bar-label">Pop-Prop</span>
+                <div class="dual-bar-track"><div class="dual-bar-fill dual-bar-fill--pop" id="cbarPopOverall"></div></div>
+                <span class="dual-bar-pct" id="cbarPopOverallPct">—</span>
+              </div>
+              <div class="dual-bar-row">
+                <span class="dual-bar-label">LP High-SVI</span>
+                <div class="dual-bar-track"><div class="dual-bar-fill dual-bar-fill--lp" id="cbarLpHiSvi"></div></div>
+                <span class="dual-bar-pct" id="cbarLpHiSviPct">—</span>
+              </div>
+              <div class="dual-bar-row">
+                <span class="dual-bar-label">Pop High-SVI</span>
+                <div class="dual-bar-track"><div class="dual-bar-fill dual-bar-fill--pop" id="cbarPopHiSvi"></div></div>
+                <span class="dual-bar-pct" id="cbarPopHiSviPct">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resources + Counties -->
+        <div class="results-bottom">
+          <div class="resource-section">
+            <div class="resource-title" id="resourceTitle">Resource Breakdown</div>
+            <div class="resource-list" id="resourceList"></div>
+          </div>
+
+          <div class="counties-section">
+            <div class="counties-title">
+              Top Allocated Counties
+              <span id="countiesSubtitle" style="font-weight:400;color:var(--text-3);font-family:'DM Sans',sans-serif;"></span>
+            </div>
+            <table class="counties-table">
+              <thead>
+                <tr>
+                  <th>County / FIPS</th>
+                  <th>SVI</th>
+                  <th>Demand</th>
+                  <th>LP Allocation</th>
+                  <th>Coverage</th>
+                </tr>
+              </thead>
+              <tbody id="countiesTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /resultsContent -->
+    </div><!-- /results-panel -->
+  </div><!-- /sim-main -->
+</div><!-- /sim-layout -->
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/simulator.js') }}"></script>
+{% endblock %}
