@@ -5,6 +5,7 @@ Run:  python web/app.py
 """
 from pathlib import Path
 import json
+import tempfile
 import numpy as np
 import pandas as pd
 import pulp
@@ -103,7 +104,7 @@ def run_lp(demand: pd.Series, svi: pd.Series, equity_frac: float,
     if high_svi:
         prob += (pulp.lpSum(alloc[i] for i in high_svi if i in alloc)
                  >= equity_frac * S)
-    prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    prob.solve(pulp.PULP_CBC_CMD(msg=0, tmpDir=tempfile.gettempdir()))
 
     lp_alloc = pd.Series(
         {i: max(0.0, pulp.value(alloc[i]) or 0.0) for i in counties}
